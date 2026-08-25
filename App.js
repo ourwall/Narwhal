@@ -56,10 +56,7 @@ function renderPhoto(photo, index) {
 // 3. When photo is taken, pop open the review modal
 cameraInput.addEventListener('change', (event) => {
   const file = event.target.files[0];
-  if (!file) {
-    alert('No file selected.');
-    return;
-  }
+  if (!file) return;
 
   selectedFile = file;
   previewImg.src = URL.createObjectURL(file);
@@ -77,7 +74,7 @@ retakeBtn.addEventListener('click', () => {
 // Confirm and Upload button
 confirmUploadBtn.addEventListener('click', async () => {
   if (!selectedFile) {
-    alert('Please select a photo first!');
+    alert('No file found!');
     return;
   }
 
@@ -89,26 +86,43 @@ confirmUploadBtn.addEventListener('click', async () => {
   try {
     const fileName = `public/${Date.now()}.jpg`;
 
+    // Step 1: Upload to Storage
     const { error: uploadError } = await supabaseClient.storage
       .from('Polaroids')
       .upload(fileName, selectedFile, { contentType: selectedFile.type || 'image/jpeg' });
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      alert('Storage Upload Error: ' + uploadError.message);
+      throw uploadError;
+    }
 
+    // Step 2: Get Public URL
     const { data: urlData } = supabaseClient.storage
       .from('Polaroids')
       .getPublicUrl(fileName);
 
+    if (!urlData || !urlData.publicUrl) {
+      alert('Could not get public URL for image');
+      return;
+    }
+
+    // Step 3: Insert into Database table 'polaroids'
     const { error: dbError } = await supabaseClient
       .from('polaroids')
       .insert([{ image_url: urlData.publicUrl, caption: captionValue }]);
 
-    if (dbError) throw dbError;
+    if (dbError) {
+      alert('Database Insert Error: ' + dbError.message);
+      throw dbError;
+    }
 
+    // Success! Reset file
     selectedFile = null;
+    // Force reload photos to show it immediately
+    loadPhotos();
 
   } catch (err) {
-    alert('Upload error: ' + err.message);
+    console.error('General error:', err);
   } finally {
     openCameraBtn.innerText = '📷 Snap Photo';
     openCameraBtn.style.pointerEvents = 'auto';
