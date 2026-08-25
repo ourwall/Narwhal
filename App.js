@@ -75,19 +75,17 @@ export default function App() {
       <header style={styles.header}>
         <h1 style={styles.title}>Wedding Photo Wall</h1>
 
-        {/* Direct HTML Label trigger - bypasses script blocks */}
-        <label htmlFor="camera-input" style={styles.snapLabel}>
-          {uploading ? 'Uploading...' : '📷 Take Photo'}
+        {/* Standard File Upload Button */}
+        <label style={styles.snapLabel}>
+          {uploading ? 'Uploading...' : '📷 Add Photo'}
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            style={{ display: 'none' }}
+            disabled={uploading}
+          />
         </label>
-        <input
-          id="camera-input"
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={handleFileChange}
-          style={{ display: 'none' }}
-          disabled={uploading}
-        />
       </header>
 
       <main style={styles.wall}>
