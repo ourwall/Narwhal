@@ -5,9 +5,15 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 
 const cameraInput = document.getElementById('camera-input');
 const openCameraBtn = document.getElementById('open-camera-btn');
-const captionInput = document.getElementById('caption-input');
 const photoWall = document.getElementById('photo-wall');
 
+const previewModal = document.getElementById('preview-modal');
+const previewImg = document.getElementById('preview-img');
+const modalCaptionInput = document.getElementById('modal-caption-input');
+const retakeBtn = document.getElementById('retake-btn');
+const confirmUploadBtn = document.getElementById('confirm-upload-btn');
+
+let selectedFile = null;
 const rotations = [-4, -2, 2, 4, -3, 3, -1, 1];
 
 // 1. Fetch initial photo feed
@@ -28,10 +34,9 @@ async function loadPhotos() {
   }
 }
 
-// 2. Render individual Polaroid card with a random slight tilt
+// 2. Render individual Polaroid card
 function renderPhoto(photo, index) {
   const tilt = rotations[index % rotations.length];
-
   const card = document.createElement('div');
   card.className = 'polaroid';
   card.style.transform = `rotate(${tilt}deg)`;
@@ -48,12 +53,30 @@ function renderPhoto(photo, index) {
   photoWall.appendChild(card);
 }
 
-// 3. Handle photo selection & upload with caption
-cameraInput.addEventListener('change', async (event) => {
+// 3. When photo is taken, pop open the review modal
+cameraInput.addEventListener('change', (event) => {
   const file = event.target.files[0];
   if (!file) return;
 
-  const captionValue = captionInput.value.trim().substring(0, 10);
+  selectedFile = file;
+  previewImg.src = URL.createObjectURL(file);
+  modalCaptionInput.value = ''; // clear input for fresh caption
+  previewModal.style.display = 'flex';
+});
+
+// Retake button (discard photo)
+retakeBtn.addEventListener('click', () => {
+  selectedFile = null;
+  previewModal.style.display = 'none';
+  cameraInput.value = '';
+});
+
+// Confirm and Upload button
+confirmUploadBtn.addEventListener('click', async () => {
+  if (!selectedFile) return;
+
+  const captionValue = modalCaptionInput.value.trim().substring(0, 10);
+  previewModal.style.display = 'none';
   openCameraBtn.innerText = 'Uploading...';
   openCameraBtn.style.pointerEvents = 'none';
 
@@ -62,7 +85,7 @@ cameraInput.addEventListener('change', async (event) => {
 
     const { error: uploadError } = await supabaseClient.storage
       .from('POLAROIDS')
-      .upload(fileName, file, { contentType: file.type || 'image/jpeg' });
+      .upload(fileName, selectedFile, { contentType: selectedFile.type || 'image/jpeg' });
 
     if (uploadError) throw uploadError;
 
@@ -76,18 +99,18 @@ cameraInput.addEventListener('change', async (event) => {
 
     if (dbError) throw dbError;
 
-    captionInput.value = '';
+    selectedFile = null;
 
   } catch (err) {
     alert('Upload error: ' + err.message);
   } finally {
-    openCameraBtn.innerText = '📷 Open Camera';
+    openCameraBtn.innerText = '📷 Snap Photo';
     openCameraBtn.style.pointerEvents = 'auto';
     cameraInput.value = '';
   }
 });
 
-// 4. Listen for real-time inserts
+// 4. Real-time updates for everyone's screen
 supabaseClient
   .channel('polaroids_channel')
   .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'polaroids' }, (payload) => {
