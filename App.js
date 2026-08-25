@@ -60,7 +60,7 @@ cameraInput.addEventListener('change', (event) => {
 
   selectedFile = file;
   previewImg.src = URL.createObjectURL(file);
-  modalCaptionInput.value = ''; // clear input for fresh caption
+  modalCaptionInput.value = ''; 
   previewModal.style.display = 'flex';
 });
 
@@ -83,14 +83,15 @@ confirmUploadBtn.addEventListener('click', async () => {
   try {
     const fileName = `public/${Date.now()}.jpg`;
 
+    // Updated to match your exact bucket name: 'Polaroids'
     const { error: uploadError } = await supabaseClient.storage
-      .from('POLAROIDS')
+      .from('Polaroids')
       .upload(fileName, selectedFile, { contentType: selectedFile.type || 'image/jpeg' });
 
     if (uploadError) throw uploadError;
 
     const { data: urlData } = supabaseClient.storage
-      .from('POLAROIDS')
+      .from('Polaroids')
       .getPublicUrl(fileName);
 
     const { error: dbError } = await supabaseClient
