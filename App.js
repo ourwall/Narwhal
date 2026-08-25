@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 // Supabase Configuration
@@ -9,7 +9,6 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 export default function App() {
   const [photos, setPhotos] = useState([]);
   const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef(null);
 
   useEffect(() => {
     fetchPhotos();
@@ -35,12 +34,6 @@ export default function App() {
 
     if (error) console.error('Error fetching photos:', error);
     else setPhotos(data || []);
-  };
-
-  const handleButtonClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
   };
 
   const handleFileChange = async (event) => {
@@ -73,7 +66,6 @@ export default function App() {
       alert('Upload failed: ' + err.message);
     } finally {
       setUploading(false);
-      // Reset input so the same device can take back-to-back photos
       event.target.value = '';
     }
   };
@@ -82,17 +74,19 @@ export default function App() {
     <div style={styles.container}>
       <header style={styles.header}>
         <h1 style={styles.title}>Wedding Photo Wall</h1>
-        <button style={styles.snapButton} onClick={handleButtonClick} disabled={uploading}>
+
+        {/* Direct HTML Label trigger - bypasses script blocks */}
+        <label htmlFor="camera-input" style={styles.snapLabel}>
           {uploading ? 'Uploading...' : '📷 Take Photo'}
-        </button>
-        {/* Hidden native camera trigger */}
+        </label>
         <input
+          id="camera-input"
           type="file"
           accept="image/*"
           capture="environment"
-          ref={fileInputRef}
           onChange={handleFileChange}
           style={{ display: 'none' }}
+          disabled={uploading}
         />
       </header>
 
@@ -132,15 +126,15 @@ const styles = {
     boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
   },
   title: { margin: 0, fontSize: '1.2rem' },
-  snapButton: {
+  snapLabel: {
     backgroundColor: '#ff4081',
     color: '#fff',
-    border: 'none',
     padding: '10px 18px',
     borderRadius: '20px',
     fontWeight: 'bold',
     fontSize: '1rem',
     cursor: 'pointer',
+    display: 'inline-block',
   },
   wall: {
     display: 'flex',
