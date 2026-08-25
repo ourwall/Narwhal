@@ -56,7 +56,10 @@ function renderPhoto(photo, index) {
 // 3. When photo is taken, pop open the review modal
 cameraInput.addEventListener('change', (event) => {
   const file = event.target.files[0];
-  if (!file) return;
+  if (!file) {
+    alert('No file selected.');
+    return;
+  }
 
   selectedFile = file;
   previewImg.src = URL.createObjectURL(file);
@@ -73,7 +76,10 @@ retakeBtn.addEventListener('click', () => {
 
 // Confirm and Upload button
 confirmUploadBtn.addEventListener('click', async () => {
-  if (!selectedFile) return;
+  if (!selectedFile) {
+    alert('Please select a photo first!');
+    return;
+  }
 
   const captionValue = modalCaptionInput.value.trim().substring(0, 10);
   previewModal.style.display = 'none';
@@ -83,7 +89,6 @@ confirmUploadBtn.addEventListener('click', async () => {
   try {
     const fileName = `public/${Date.now()}.jpg`;
 
-    // Updated to match your exact bucket name: 'Polaroids'
     const { error: uploadError } = await supabaseClient.storage
       .from('Polaroids')
       .upload(fileName, selectedFile, { contentType: selectedFile.type || 'image/jpeg' });
