@@ -3,27 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- Line 6 -->
-<title>Narwhal</title>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Narwhal</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>🦄 Narwhal</h1>
-  <p>Scan, snap a live moment, and pin it to the board!</p>
+  <header>
+    <h1>🦄 Narwhal</h1>
+    <p>Scan, snap a live moment, and pin it to the board!</p>
+  </header>
 
-  <!-- Main Start Button -->
   <button id="take-photo-btn">📸 Take Live Polaroid</button>
 
   <!-- Live Camera Section -->
   <section id="camera-section" style="display:none;">
     <video id="camera-feed" autoplay playsinline></video>
-    <button id="snap-btn">📸 Capture</button>
+    <div style="display: flex; gap: 10px; margin-top: 15px;">
+      <button id="flip-btn">🔄 Flip Camera</button>
+      <button id="snap-btn">📸 Capture</button>
+    </div>
   </section>
 
   <!-- Caption & Pin Form -->
@@ -34,13 +31,8 @@
   </section>
 
   <!-- The Digital Corkboard -->
-  <main id="corkboard-grid">
-    <!-- Pinned polaroid photos from Supabase will load here dynamically -->
-  </main>
+  <main id="corkboard-grid"></main>
 
   <script defer src="App.js"></script>
-</body>
-</html>
-
 </body>
 </html>
