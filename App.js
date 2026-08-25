@@ -1,169 +1,108 @@
-import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-// Supabase Configuration
 const SUPABASE_URL = 'https://wynsipybuskswbogoomx.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_cBfTt9Z9R6ByKTAYecRVpw_TltjjOCH';
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-export default function App() {
-  const [photos, setPhotos] = useState([]);
-  const [uploading, setUploading] = useState(false);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  useEffect(() => {
-    fetchPhotos();
+const cameraInput = document.getElementById('camera-input');
+const uploadLabel = document.getElementById('upload-label');
+const photoWall = document.getElementById('photo-wall');
 
-    // Real-time listener for new photo posts
-    const subscription = supabase
-      .channel('polaroids_channel')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'polaroids' }, (payload) => {
-        setPhotos((prev) => [payload.new, ...prev]);
-      })
-      .subscribe();
+// 1. Fetch initial photo feed
+async function loadPhotos() {
+  const { data, error } = await supabaseClient
+    .from('polaroids')
+    .select('*')
+    .order('created_at', { ascending: false });
 
-    return () => {
-      supabase.removeChannel(subscription);
-    };
-  }, []);
+  if (error) {
+    console.error('Error fetching photos:', error);
+    return;
+  }
 
-  const fetchPhotos = async () => {
-    const { data, error } = await supabase
-      .from('polaroids')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) console.error('Error fetching photos:', error);
-    else setPhotos(data || []);
-  };
-
-  const handleFileChange = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    setUploading(true);
-    try {
-      const fileName = `public/${Date.now()}.jpg`;
-
-      // 1. Upload directly to Supabase storage
-      const { error: uploadError } = await supabase.storage
-        .from('POLAROIDS')
-        .upload(fileName, file, { contentType: file.type || 'image/jpeg' });
-
-      if (uploadError) throw uploadError;
-
-      // 2. Fetch public link
-      const { data: urlData } = supabase.storage
-        .from('POLAROIDS')
-        .getPublicUrl(fileName);
-
-      // 3. Save entry to database
-      const { error: dbError } = await supabase
-        .from('polaroids')
-        .insert([{ image_url: urlData.publicUrl }]);
-
-      if (dbError) throw dbError;
-    } catch (err) {
-      alert('Upload failed: ' + err.message);
-    } finally {
-      setUploading(false);
-      event.target.value = '';
-    }
-  };
-
-  return (
-    <div style={styles.container}>
-      <header style={styles.header}>
-        <h1 style={styles.title}>Wedding Photo Wall</h1>
-
-        {/* Standard File Upload Button */}
-        <label style={styles.snapLabel}>
-          {uploading ? 'Uploading...' : '📷 Add Photo'}
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            style={{ display: 'none' }}
-            disabled={uploading}
-          />
-        </label>
-      </header>
-
-      <main style={styles.wall}>
-        {photos.map((photo) => (
-          <div key={photo.id} style={styles.polaroid}>
-            <div style={styles.imageContainer}>
-              <img src={photo.image_url} alt="Wedding moment" style={styles.image} />
-            </div>
-            <p style={styles.date}>
-              {new Date(photo.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </p>
-          </div>
-        ))}
-      </main>
-    </div>
-  );
+  photoWall.innerHTML = '';
+  if (data) {
+    data.forEach(renderPhoto);
+  }
 }
 
-const styles = {
-  container: {
-    backgroundColor: '#121212',
-    minHeight: '100vh',
-    color: '#fff',
-    fontFamily: 'sans-serif',
-    paddingBottom: '40px',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '20px',
-    backgroundColor: '#1e1e1e',
-    position: 'sticky',
-    top: 0,
-    zIndex: 10,
-    boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
-  },
-  title: { margin: 0, fontSize: '1.2rem' },
-  snapLabel: {
-    backgroundColor: '#ff4081',
-    color: '#fff',
-    padding: '10px 18px',
-    borderRadius: '20px',
-    fontWeight: 'bold',
-    fontSize: '1rem',
-    cursor: 'pointer',
-    display: 'inline-block',
-  },
-  wall: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '20px',
-    padding: '20px',
-    justifyContent: 'center',
-  },
-  polaroid: {
-    backgroundColor: '#fff',
-    padding: '12px 12px 20px 12px',
-    borderRadius: '4px',
-    boxShadow: '0 4px 15px rgba(0,0,0,0.4)',
-    width: '240px',
-    textAlign: 'center',
-  },
-  imageContainer: {
-    width: '100%',
-    height: '240px',
-    backgroundColor: '#eee',
-    overflow: 'hidden',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-  },
-  date: {
-    color: '#333',
-    margin: '12px 0 0 0',
-    fontSize: '0.85rem',
-    fontWeight: 'bold',
-  },
-};
+// 2. Render individual photo card
+function renderPhoto(photo) {
+  const timeString = new Date(photo.created_at).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  const card = document.createElement('div');
+  card.className = 'polaroid';
+  card.innerHTML = `
+    <div class="image-container">
+      <img src="${photo.image_url}" alt="Wedding Moment" />
+    </div>
+    <p class="date">${timeString}</p>
+  `;
+
+  photoWall.appendChild(card);
+}
+
+// 3. Handle photo upload
+cameraInput.addEventListener('change', async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  uploadLabel.innerText = 'Uploading...';
+
+  try {
+    const fileName = `public/${Date.now()}.jpg`;
+
+    // Storage upload
+    const { error: uploadError } = await supabaseClient.storage
+      .from('POLAROIDS')
+      .upload(fileName, file, { contentType: file.type || 'image/jpeg' });
+
+    if (uploadError) throw uploadError;
+
+    // Public URL retrieval
+    const { data: urlData } = supabaseClient.storage
+      .from('POLAROIDS')
+      .getPublicUrl(fileName);
+
+    // Database record creation
+    const { error: dbError } = await supabaseClient
+      .from('polaroids')
+      .insert([{ image_url: urlData.publicUrl }]);
+
+    if (dbError) throw dbError;
+
+  } catch (err) {
+    alert('Upload error: ' + err.message);
+  } finally {
+    uploadLabel.innerText = '📷 Take Photo';
+    cameraInput.value = '';
+  }
+});
+
+// 4. Listen for real-time inserts
+supabaseClient
+  .channel('polaroids_channel')
+  .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'polaroids' }, (payload) => {
+    // Insert new photo at the top
+    const timeString = new Date(payload.new.created_at).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const card = document.createElement('div');
+    card.className = 'polaroid';
+    card.innerHTML = `
+      <div class="image-container">
+        <img src="${payload.new.image_url}" alt="Wedding Moment" />
+      </div>
+      <p class="date">${timeString}</p>
+    `;
+
+    photoWall.prepend(card);
+  })
+  .subscribe();
+
+// Load photos on initialization
+loadPhotos();
