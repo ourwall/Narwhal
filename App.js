@@ -9,14 +9,12 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 export default function App() {
   const [photos, setPhotos] = useState([]);
   const [uploading, setUploading] = useState(false);
-  const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     fetchPhotos();
 
-    // Subscribe to real-time inserts
+    // Real-time listener for new photo posts
     const subscription = supabase
       .channel('polaroids_channel')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'polaroids' }, (payload) => {
@@ -39,71 +37,33 @@ export default function App() {
     else setPhotos(data || []);
   };
 
-  const startCamera = async () => {
-    setIsCameraOpen(true);
-    try {
-      // Basic constraint so any available camera opens reliably
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: false,
-      });
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-    } catch (err) {
-      alert('Camera error: ' + err.message);
-      setIsCameraOpen(false);
+  const handleButtonClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
   };
 
-  const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject;
-      stream.getTracks().forEach((track) => track.stop());
-    }
-    setIsCameraOpen(false);
-  };
+  const handleFileChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
 
-  const capturePhoto = () => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
-
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
-    const context = canvas.getContext('2d');
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    canvas.toBlob(async (blob) => {
-      if (!blob) {
-        alert('Could not process photo blob.');
-        return;
-      }
-      uploadPhoto(blob);
-    }, 'image/jpeg');
-  };
-
-  const uploadPhoto = async (blob) => {
     setUploading(true);
-    stopCamera();
     try {
       const fileName = `public/${Date.now()}.jpg`;
 
-      // 1. Upload photo to Supabase Storage bucket (matching uppercase name)
+      // 1. Upload directly to Supabase storage
       const { error: uploadError } = await supabase.storage
         .from('POLAROIDS')
-        .upload(fileName, blob, { contentType: 'image/jpeg' });
+        .upload(fileName, file, { contentType: file.type || 'image/jpeg' });
 
       if (uploadError) throw uploadError;
 
-      // 2. Get Public URL
+      // 2. Fetch public link
       const { data: urlData } = supabase.storage
         .from('POLAROIDS')
         .getPublicUrl(fileName);
 
-      // 3. Save entry to Database
+      // 3. Save entry to database
       const { error: dbError } = await supabase
         .from('polaroids')
         .insert([{ image_url: urlData.publicUrl }]);
@@ -113,6 +73,8 @@ export default function App() {
       alert('Upload failed: ' + err.message);
     } finally {
       setUploading(false);
+      // Reset input so the same device can take back-to-back photos
+      event.target.value = '';
     }
   };
 
@@ -120,28 +82,19 @@ export default function App() {
     <div style={styles.container}>
       <header style={styles.header}>
         <h1 style={styles.title}>Wedding Photo Wall</h1>
-        {!isCameraOpen ? (
-          <button style={styles.snapButton} onClick={startCamera} disabled={uploading}>
-            {uploading ? 'Uploading...' : '📷 Open Camera'}
-          </button>
-        ) : (
-          <button style={styles.cancelButton} onClick={stopCamera}>
-            Cancel
-          </button>
-        )}
+        <button style={styles.snapButton} onClick={handleButtonClick} disabled={uploading}>
+          {uploading ? 'Uploading...' : '📷 Take Photo'}
+        </button>
+        {/* Hidden native camera trigger */}
+        <input
+          type="file"
+          accept="image/*"
+          capture="environment"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          style={{ display: 'none' }}
+        />
       </header>
-
-      {/* Embedded Live Viewfinder */}
-      {isCameraOpen && (
-        <div style={styles.viewfinder}>
-          <video ref={videoRef} autoPlay playsInline muted style={styles.video} />
-          <button style={styles.captureBtn} onClick={capturePhoto}>
-            📸 Snap Photo
-          </button>
-        </div>
-      )}
-
-      <canvas ref={canvasRef} style={{ display: 'none' }} />
 
       <main style={styles.wall}>
         {photos.map((photo) => (
@@ -183,40 +136,10 @@ const styles = {
     backgroundColor: '#ff4081',
     color: '#fff',
     border: 'none',
-    padding: '10px 16px',
+    padding: '10px 18px',
     borderRadius: '20px',
     fontWeight: 'bold',
-    cursor: 'pointer',
-  },
-  cancelButton: {
-    backgroundColor: '#555',
-    color: '#fff',
-    border: 'none',
-    padding: '10px 16px',
-    borderRadius: '20px',
-    cursor: 'pointer',
-  },
-  viewfinder: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    padding: '20px',
-    backgroundColor: '#000',
-  },
-  video: {
-    width: '100%',
-    maxWidth: '400px',
-    borderRadius: '8px',
-  },
-  captureBtn: {
-    marginTop: '15px',
-    backgroundColor: '#ff4081',
-    color: '#fff',
-    border: 'none',
-    padding: '12px 24px',
-    borderRadius: '25px',
-    fontSize: '1.1rem',
-    fontWeight: 'bold',
+    fontSize: '1rem',
     cursor: 'pointer',
   },
   wall: {
