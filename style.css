@@ -78,11 +78,21 @@ header p {
 }
 
 #snap-btn, #upload-btn {
-  margin-top: 20px;
   background: white;
   color: #333;
   border: none;
   padding: 12px 28px;
+  font-size: 1rem;
+  font-weight: bold;
+  border-radius: 25px;
+  cursor: pointer;
+}
+
+#flip-btn {
+  background: #4a90e2;
+  color: white;
+  border: none;
+  padding: 12px 20px;
   font-size: 1rem;
   font-weight: bold;
   border-radius: 25px;
@@ -164,4 +174,3 @@ header p {
   text-align: center;
   margin-top: 4px;
 }
-
