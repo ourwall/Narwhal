@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 // Supabase Configuration
@@ -9,6 +9,9 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 export default function App() {
   const [photos, setPhotos] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
 
   useEffect(() => {
     fetchPhotos();
@@ -36,32 +39,71 @@ export default function App() {
     else setPhotos(data || []);
   };
 
-  const handleCapture = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
+  const startCamera = async () => {
+    setIsCameraOpen(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { exact: 'environment' } },
+      });
+      if (videoRef.current) videoRef.current.srcObject = stream;
+    } catch (err) {
+      // Fallback if environment camera isn't available
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        if (videoRef.current) videoRef.current.srcObject = stream;
+      } catch (e) {
+        alert('Could not access camera: ' + e.message);
+        setIsCameraOpen(false);
+      }
+    }
+  };
 
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject;
+      stream.getTracks().forEach((track) => track.stop());
+    }
+    setIsCameraOpen(false);
+  };
+
+  const capturePhoto = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext('2d');
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) return;
+      uploadPhoto(blob);
+    }, 'image/jpeg');
+  };
+
+  const uploadPhoto = async (blob) => {
     setUploading(true);
+    stopCamera();
     try {
       const fileName = `public/${Date.now()}.jpg`;
 
       // 1. Upload photo to Supabase Storage bucket
       const { error: uploadError } = await supabase.storage
         .from('polaroids')
-        .upload(fileName, file);
+        .upload(fileName, blob, { contentType: 'image/jpeg' });
 
       if (uploadError) throw uploadError;
 
-      // 2. Get Public URL for the image
+      // 2. Get Public URL
       const { data: urlData } = supabase.storage
         .from('polaroids')
         .getPublicUrl(fileName);
 
-      const imageUrl = urlData.publicUrl;
-
-      // 3. Save photo entry to Database table
+      // 3. Save entry to Database
       const { error: dbError } = await supabase
         .from('polaroids')
-        .insert([{ image_url: imageUrl }]);
+        .insert([{ image_url: urlData.publicUrl }]);
 
       if (dbError) throw dbError;
     } catch (err) {
@@ -75,14 +117,28 @@ export default function App() {
     <div style={styles.container}>
       <header style={styles.header}>
         <h1 style={styles.title}>Wedding Photo Wall</h1>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleCapture}
-          disabled={uploading}
-          style={styles.snapInput}
-        />
+        {!isCameraOpen ? (
+          <button style={styles.snapButton} onClick={startCamera} disabled={uploading}>
+            {uploading ? 'Uploading...' : '📷 Open Camera'}
+          </button>
+        ) : (
+          <button style={styles.cancelButton} onClick={stopCamera}>
+            Cancel
+          </button>
+        )}
       </header>
+
+      {/* Embedded Live Viewfinder */}
+      {isCameraOpen && (
+        <div style={styles.viewfinder}>
+          <video ref={videoRef} autoPlay playsInline style={styles.video} />
+          <button style={styles.captureBtn} onClick={capturePhoto}>
+            📸 Snap
+          </button>
+        </div>
+      )}
+
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
 
       <main style={styles.wall}>
         {photos.map((photo) => (
@@ -120,15 +176,45 @@ const styles = {
     boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
   },
   title: { margin: 0, fontSize: '1.2rem' },
-  snapInput: {
+  snapButton: {
     backgroundColor: '#ff4081',
     color: '#fff',
-    padding: '8px 12px',
+    border: 'none',
+    padding: '10px 16px',
     borderRadius: '20px',
     fontWeight: 'bold',
     cursor: 'pointer',
-    maxWidth: '180px',
-    fontSize: '0.85rem',
+  },
+  cancelButton: {
+    backgroundColor: '#555',
+    color: '#fff',
+    border: 'none',
+    padding: '10px 16px',
+    borderRadius: '20px',
+    cursor: 'pointer',
+  },
+  viewfinder: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    padding: '20px',
+    backgroundColor: '#000',
+  },
+  video: {
+    width: '100%',
+    maxWidth: '400px',
+    borderRadius: '8px',
+  },
+  captureBtn: {
+    marginTop: '15px',
+    backgroundColor: '#ff4081',
+    color: '#fff',
+    border: 'none',
+    padding: '12px 24px',
+    borderRadius: '25px',
+    fontSize: '1.1rem',
+    fontWeight: 'bold',
+    cursor: 'pointer',
   },
   wall: {
     display: 'flex',
