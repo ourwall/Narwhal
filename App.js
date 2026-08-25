@@ -19,7 +19,7 @@ const rotations = [-4, -2, 2, 4, -3, 3, -1, 1];
 // 1. Fetch initial photo feed
 async function loadPhotos() {
   const { data, error } = await supabaseClient
-    .from('polaroids')
+    .from('Polaroids')
     .select('*')
     .order('created_at', { ascending: false });
 
