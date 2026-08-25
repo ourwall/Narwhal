@@ -10,29 +10,7 @@ body {
   color: #ffffff;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   min-height: 100vh;
-  padding-bottom: 90px;
-}
-
-.header {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  padding: 20px;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.snap-btn {
-  background-color: #ff4081;
-  color: #ffffff;
-  padding: 12px 24px;
-  border-radius: 25px;
-  font-weight: bold;
-  font-size: 1rem;
-  cursor: pointer;
-  box-shadow: 0 4px 15px rgba(255, 64, 129, 0.4);
-  user-select: none;
+  padding-bottom: 110px; /* leaves room for bottom bar */
 }
 
 .wall {
@@ -81,7 +59,7 @@ body {
   text-overflow: ellipsis;
 }
 
-/* Fixed Bottom Caption & Upload Bar */
+/* Fixed Bottom Bar with a Big Noticeable Camera Button */
 .footer-bar {
   position: fixed;
   bottom: 0;
@@ -96,19 +74,94 @@ body {
   z-index: 100;
 }
 
-#caption-input {
-  width: 100%;
-  max-width: 600px;
-  padding: 14px 20px;
-  border-radius: 25px;
-  border: 1px solid #444;
-  background-color: #2b2624;
-  color: #fff;
-  font-size: 1rem;
-  outline: none;
+.snap-btn-large {
+  background-color: #ff4081;
+  color: #ffffff;
+  padding: 16px 40px;
+  border-radius: 35px;
+  font-weight: bold;
+  font-size: 1.2rem;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(255, 64, 129, 0.6);
+  user-select: none;
   text-align: center;
+  width: 100%;
+  max-width: 350px;
 }
 
-#caption-input::placeholder {
-  color: #888;
+/* Preview Modal Styles */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #222;
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  max-width: 320px;
+  width: 90%;
+}
+
+.modal-content h3 {
+  margin-bottom: 15px;
+  color: #fff;
+  font-size: 1.2rem;
+}
+
+.preview-polaroid {
+  background-color: #ffffff;
+  padding: 12px 12px 20px 12px;
+  border-radius: 3px;
+  margin-bottom: 20px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+}
+
+#modal-caption-input {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+  text-align: center;
+  text-transform: uppercase;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: bold;
+  outline: none;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.primary-btn {
+  background-color: #ff4081;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 20px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.secondary-btn {
+  background-color: #555;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 20px;
+  font-weight: bold;
+  cursor: pointer;
 }
