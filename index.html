@@ -5,20 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Wedding Photo Wall</title>
   <link rel="stylesheet" href="style.css">
-  <!-- Supabase JS Library -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
   <header class="header">
-    <h1 class="title">Wedding Photo Wall</h1>
-    <label for="camera-input" class="snap-btn" id="upload-label">
-      📷 Take Photo
-    </label>
-    <input type="file" id="camera-input" accept="image/*" capture="environment">
+    <!-- Hidden file input for camera trigger -->
+    <input type="file" id="camera-input" accept="image/*" capture="environment" style="display: none;">
+    <label for="camera-input" class="snap-btn" id="open-camera-btn">📷 Open Camera</label>
   </header>
 
-  <main class="wall" id="photo-wall"></main>
+  <main class="wall" id="photo-wall">
+    <!-- Photos will dynamically stack here -->
+  </main>
+
+  <!-- Bottom Caption & Upload Bar -->
+  <footer class="footer-bar">
+    <input type="text" id="caption-input" maxlength="10" placeholder="Add a caption (Max 10 letters)" />
+  </footer>
 
   <script src="app.js"></script>
 </body>
