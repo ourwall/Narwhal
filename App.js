@@ -80,7 +80,6 @@ export default function App() {
           <input
             type="file"
             accept="image/*"
-            capture="environment"
             onChange={handleCapture}
             disabled={uploading}
             style={{ display: 'none' }}
