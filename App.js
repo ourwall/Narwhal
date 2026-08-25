@@ -42,19 +42,14 @@ export default function App() {
   const startCamera = async () => {
     setIsCameraOpen(true);
     try {
+      // Soft preference for rear camera to avoid hard browser crashes
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { exact: 'environment' } },
+        video: { facingMode: 'environment' }
       });
       if (videoRef.current) videoRef.current.srcObject = stream;
     } catch (err) {
-      // Fallback if environment camera isn't available
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        if (videoRef.current) videoRef.current.srcObject = stream;
-      } catch (e) {
-        alert('Could not access camera: ' + e.message);
-        setIsCameraOpen(false);
-      }
+      alert('Camera error: ' + err.message);
+      setIsCameraOpen(false);
     }
   };
 
@@ -131,9 +126,9 @@ export default function App() {
       {/* Embedded Live Viewfinder */}
       {isCameraOpen && (
         <div style={styles.viewfinder}>
-          <video ref={videoRef} autoPlay playsInline style={styles.video} />
+          <video ref={videoRef} autoPlay playsInline muted style={styles.video} />
           <button style={styles.captureBtn} onClick={capturePhoto}>
-            📸 Snap
+            📸 Snap Photo
           </button>
         </div>
       )}
