@@ -1,132 +1,167 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const takePhotoBtn = document.getElementById('take-photo-btn');
-  const snapBtn = document.getElementById('snap-btn');
-  const flipBtn = document.getElementById('flip-btn');
-  const video = document.getElementById('camera-feed');
-  const photoPreview = document.getElementById('photo-preview');
-  const cameraSection = document.getElementById('camera-section');
-  const pinSection = document.getElementById('pin-section');
-  const uploadBtn = document.getElementById('upload-btn');
-  const captionInput = document.getElementById('caption');
-  const corkboardGrid = document.getElementById('corkboard-grid');
-  
-  let currentStream = null;
-  let currentFacingMode = 'environment'; // 'environment' = back camera, 'user' = front/selfie camera
+import React, { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
 
-  let fileInput = document.createElement('input');
-  fileInput.type = 'file';
-  fileInput.accept = 'image/*';
-  fileInput.style.display = 'none';
-  document.body.appendChild(fileInput);
+// Supabase Configuration
+const SUPABASE_URL = 'https://wynsipybuskswbogoomx.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_cBfTt9Z9R6ByKTAYecRVpw_TltjjOCH';
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  let capturedDataUrl = '';
+export default function App() {
+  const [photos, setPhotos] = useState([]);
+  const [uploading, setUploading] = useState(false);
 
-  // Stop active camera stream helper
-  const stopCurrentStream = () => {
-    if (currentStream) {
-      currentStream.getTracks().forEach(track => track.stop());
-      currentStream = null;
-    }
+  useEffect(() => {
+    fetchPhotos();
+
+    // Subscribe to real-time inserts
+    const subscription = supabase
+      .channel('polaroids_channel')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'polaroids' }, (payload) => {
+        setPhotos((prev) => [payload.new, ...prev]);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, []);
+
+  const fetchPhotos = async () => {
+    const { data, error } = await supabase
+      .from('polaroids')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) console.error('Error fetching photos:', error);
+    else setPhotos(data || []);
   };
 
-  // Start stream with specified facingMode
-  const startCameraStream = async (facingMode) => {
-    stopCurrentStream();
-    try {
-      currentStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: facingMode } 
-      });
-      if (video) {
-        video.srcObject = currentStream;
-        video.play();
-      }
-      if (cameraSection) cameraSection.style.display = 'flex';
-    } catch (err) {
-      console.warn('Live stream unavailable, opening camera picker fallback:', err);
-      fileInput.click();
-    }
-  };
-
-  // Open camera feed
-  if (takePhotoBtn) {
-    takePhotoBtn.addEventListener('click', () => {
-      startCameraStream(currentFacingMode);
-    });
-  }
-
-  // Flip camera toggle button
-  if (flipBtn) {
-    flipBtn.addEventListener('click', () => {
-      currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
-      startCameraStream(currentFacingMode);
-    });
-  }
-
-  // Snap photo
-  if (snapBtn) {
-    snapBtn.addEventListener('click', () => {
-      if (video && photoPreview) {
-        photoPreview.width = 300;
-        photoPreview.height = 300;
-        const ctx = photoPreview.getContext('2d');
-        
-        // Mirror image on canvas if taking a selfie
-        if (currentFacingMode === 'user') {
-          ctx.translate(photoPreview.width, 0);
-          ctx.scale(-1, 1);
-        }
-        
-        ctx.drawImage(video, 0, 0, photoPreview.width, photoPreview.height);
-        capturedDataUrl = photoPreview.toDataURL('image/jpeg', 0.8);
-
-        stopCurrentStream();
-        
-        if (cameraSection) cameraSection.style.display = 'none';
-        if (pinSection) pinSection.style.display = 'flex';
-      }
-    });
-  }
-
-  // Handle fallback picker
-  fileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
+  const handleCapture = async (event) => {
+    const file = event.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      capturedDataUrl = event.target.result;
-      if (cameraSection) cameraSection.style.display = 'none';
-      if (pinSection) pinSection.style.display = 'flex';
-    };
-    reader.readAsDataURL(file);
-  });
+    setUploading(true);
+    try {
+      const fileName = `public/${Date.now()}.jpg`;
 
-  // Pin photo to board
-  if (uploadBtn) {
-    uploadBtn.addEventListener('click', () => {
-      if (!capturedDataUrl) return;
+      // 1. Upload photo to Supabase Storage bucket
+      const { error: uploadError } = await supabase.storage
+        .from('polaroids')
+        .upload(fileName, file);
 
-      const captionText = captionInput.value.trim() || '';
-      const currentDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+      if (uploadError) throw uploadError;
 
-      const polaroidDiv = document.createElement('div');
-      polaroidDiv.className = 'polaroid';
-      
-      const randomTilt = (Math.random() * 14 - 7).toFixed(1);
-      polaroidDiv.style.transform = `rotate(${randomTilt}deg)`;
+      // 2. Get Public URL for the image
+      const { data: urlData } = supabase.storage
+        .from('polaroids')
+        .getPublicUrl(fileName);
 
-      polaroidDiv.innerHTML = `
-        <img src="${capturedDataUrl}" alt="Polaroid">
-        ${captionText ? `<div class="polaroid-caption">${captionText}</div>` : ''}
-        <div class="polaroid-date">${currentDate}</div>
-      `;
+      const imageUrl = urlData.publicUrl;
 
-      corkboardGrid.prepend(polaroidDiv);
+      // 3. Save photo entry to Database table
+      const { error: dbError } = await supabase
+        .from('polaroids')
+        .insert([{ image_url: imageUrl }]);
 
-      captionInput.value = '';
-      capturedDataUrl = '';
-      if (pinSection) pinSection.style.display = 'none';
-    });
-  }
-});
+      if (dbError) throw dbError;
+    } catch (err) {
+      alert('Upload failed: ' + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
 
+  return (
+    <div style={styles.container}>
+      <header style={styles.header}>
+        <h1 style={styles.title}>Wedding Photo Wall</h1>
+        <label style={styles.snapButton}>
+          {uploading ? 'Uploading...' : '📷 Take Photo'}
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleCapture}
+            disabled={uploading}
+            style={{ display: 'none' }}
+          />
+        </label>
+      </header>
+
+      <main style={styles.wall}>
+        {photos.map((photo) => (
+          <div key={photo.id} style={styles.polaroid}>
+            <div style={styles.imageContainer}>
+              <img src={photo.image_url} alt="Wedding moment" style={styles.image} />
+            </div>
+            <p style={styles.date}>
+              {new Date(photo.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          </div>
+        ))}
+      </main>
+    </div>
+  );
+}
+
+const styles = {
+  container: {
+    backgroundColor: '#121212',
+    minHeight: '100vh',
+    color: '#fff',
+    fontFamily: 'sans-serif',
+    paddingBottom: '40px',
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '20px',
+    backgroundColor: '#1e1e1e',
+    position: 'sticky',
+    top: 0,
+    zIndex: 10,
+    boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
+  },
+  title: { margin: 0, fontSize: '1.2rem' },
+  snapButton: {
+    backgroundColor: '#ff4081',
+    color: '#fff',
+    padding: '10px 16px',
+    borderRadius: '20px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+  },
+  wall: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '20px',
+    padding: '20px',
+    justifyContent: 'center',
+  },
+  polaroid: {
+    backgroundColor: '#fff',
+    padding: '12px 12px 20px 12px',
+    borderRadius: '4px',
+    boxShadow: '0 4px 15px rgba(0,0,0,0.4)',
+    width: '240px',
+    textAlign: 'center',
+  },
+  imageContainer: {
+    width: '100%',
+    height: '240px',
+    backgroundColor: '#eee',
+    overflow: 'hidden',
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+  },
+  date: {
+    color: '#333',
+    margin: '12px 0 0 0',
+    fontSize: '0.85rem',
+    fontWeight: 'bold',
+  },
+};
