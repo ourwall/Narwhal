@@ -75,16 +75,13 @@ export default function App() {
     <div style={styles.container}>
       <header style={styles.header}>
         <h1 style={styles.title}>Wedding Photo Wall</h1>
-        <label style={styles.snapButton}>
-          {uploading ? 'Uploading...' : '📷 Take Photo'}
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleCapture}
-            disabled={uploading}
-            style={{ display: 'none' }}
-          />
-        </label>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleCapture}
+          disabled={uploading}
+          style={styles.snapInput}
+        />
       </header>
 
       <main style={styles.wall}>
@@ -123,13 +120,15 @@ const styles = {
     boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
   },
   title: { margin: 0, fontSize: '1.2rem' },
-  snapButton: {
+  snapInput: {
     backgroundColor: '#ff4081',
     color: '#fff',
-    padding: '10px 16px',
+    padding: '8px 12px',
     borderRadius: '20px',
     fontWeight: 'bold',
     cursor: 'pointer',
+    maxWidth: '180px',
+    fontSize: '0.85rem',
   },
   wall: {
     display: 'flex',
