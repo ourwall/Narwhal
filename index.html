@@ -3,36 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Narwhal</title>
+  <title>Wedding Photo Wall</title>
   <link rel="stylesheet" href="style.css">
+  <!-- Supabase JS Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <header>
-    <h1>🦄 Narwhal</h1>
-    <p>Scan, snap a live moment, and pin it to the board!</p>
+
+  <header class="header">
+    <h1 class="title">Wedding Photo Wall</h1>
+    <label for="camera-input" class="snap-btn" id="upload-label">
+      📷 Take Photo
+    </label>
+    <input type="file" id="camera-input" accept="image/*" capture="environment">
   </header>
 
-  <button id="take-photo-btn">📸 Take Live Polaroid</button>
+  <main class="wall" id="photo-wall"></main>
 
-  <!-- Live Camera Section -->
-  <section id="camera-section" style="display:none;">
-    <video id="camera-feed" autoplay playsinline></video>
-    <div style="display: flex; gap: 10px; margin-top: 15px;">
-      <button id="flip-btn">🔄 Flip Camera</button>
-      <button id="snap-btn">📸 Capture</button>
-    </div>
-  </section>
-
-  <!-- Caption & Pin Form -->
-  <section id="pin-section" style="display:none;">
-    <canvas id="photo-preview"></canvas>
-    <input type="text" id="caption" maxlength="10" placeholder="Max 10 chars">
-    <button id="upload-btn">📌 Pin to Wall</button>
-  </section>
-
-  <!-- The Digital Corkboard -->
-  <main id="corkboard-grid"></main>
-
-  <script defer src="App.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
