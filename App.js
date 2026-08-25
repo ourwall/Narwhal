@@ -42,11 +42,16 @@ export default function App() {
   const startCamera = async () => {
     setIsCameraOpen(true);
     try {
-      // Soft preference for rear camera to avoid hard browser crashes
+      // Basic constraint so any available camera opens reliably
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+        video: true,
+        audio: false,
       });
-      if (videoRef.current) videoRef.current.srcObject = stream;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
     } catch (err) {
       alert('Camera error: ' + err.message);
       setIsCameraOpen(false);
@@ -66,13 +71,16 @@ export default function App() {
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
     const context = canvas.getContext('2d');
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     canvas.toBlob(async (blob) => {
-      if (!blob) return;
+      if (!blob) {
+        alert('Could not process photo blob.');
+        return;
+      }
       uploadPhoto(blob);
     }, 'image/jpeg');
   };
@@ -83,16 +91,16 @@ export default function App() {
     try {
       const fileName = `public/${Date.now()}.jpg`;
 
-      // 1. Upload photo to Supabase Storage bucket
+      // 1. Upload photo to Supabase Storage bucket (matching uppercase name)
       const { error: uploadError } = await supabase.storage
-        .from('polaroids')
+        .from('POLAROIDS')
         .upload(fileName, blob, { contentType: 'image/jpeg' });
 
       if (uploadError) throw uploadError;
 
       // 2. Get Public URL
       const { data: urlData } = supabase.storage
-        .from('polaroids')
+        .from('POLAROIDS')
         .getPublicUrl(fileName);
 
       // 3. Save entry to Database
