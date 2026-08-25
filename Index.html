@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Line 6 -->
+<title>Narwhal</title>
+
+<!-- Line 13 -->
+<h1>🦄 Narwhal</h1>
+  <p>Scan, snap a live moment, and pin it to the board!</p>
+  </>
+
+  <!-- Live Camera Section -->
+  <section id="camera-section">
+    <video id="camera-feed" autoplay playsinline></video>
+    <button id="snap-btn">📸 Take Live Polaroid</button>
+  </section>
+
+  <!-- Caption & Pin Form (Hidden until photo taken) -->
+  <section id="pin-section" style="display:none;">
+    <canvas id="photo-preview"></canvas>
+    <input type="text" id="caption" maxlength="10" placeholder="Max 10 chars...">
+    <button id="upload-btn">📌 Pin to Wall</button>
+  </section>
+
+  <!-- The Digital Corkboard -->
+  <main id="corkboard-grid">
+    <!-- Pinned polaroid photos from Supabase will load here dynamically -->
+  </main>
+
+  <script defer src="app.js"></script>
+</body>
+</html>
