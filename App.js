@@ -19,7 +19,7 @@ const rotations = [-4, -2, 2, 4, -3, 3, -1, 1];
 // 1. Fetch initial photo feed
 async function loadPhotos() {
   const { data, error } = await supabaseClient
-    .from('Polaroids')
+    .from('polaroids')
     .select('*')
     .order('created_at', { ascending: false });
 
@@ -60,7 +60,7 @@ cameraInput.addEventListener('change', (event) => {
 
   selectedFile = file;
   previewImg.src = URL.createObjectURL(file);
-  modalCaptionInput.value = ''; 
+  modalCaptionInput.value = '';
   previewModal.style.display = 'flex';
 });
 
@@ -84,9 +84,9 @@ confirmUploadBtn.addEventListener('click', async () => {
   openCameraBtn.style.pointerEvents = 'none';
 
   try {
-    const fileName = `public/${Date.now()}.jpg`;
+    const fileName = `${Date.now()}.jpg`;
 
-    // Step 1: Upload to Storage
+    // Step 1: Upload to Storage (Bucket name must be exact: 'Polaroids')
     const { error: uploadError } = await supabaseClient.storage
       .from('Polaroids')
       .upload(fileName, selectedFile, { contentType: selectedFile.type || 'image/jpeg' });
@@ -133,7 +133,7 @@ confirmUploadBtn.addEventListener('click', async () => {
 // 4. Real-time updates for everyone's screen
 supabaseClient
   .channel('polaroids_channel')
-  .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'polaroids' }, (payload) => {
+  .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'polaroids' }, payload => {
     const card = document.createElement('div');
     card.className = 'polaroid';
     const randomTilt = rotations[Math.floor(Math.random() * rotations.length)];
@@ -147,7 +147,6 @@ supabaseClient
       </div>
       <div class="caption-text">${captionText}</div>
     `;
-
     photoWall.prepend(card);
   })
   .subscribe();
